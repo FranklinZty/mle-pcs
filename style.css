@@ -15,6 +15,7 @@ body {
 header {
     text-align: center;
     margin-bottom: 40px;
+    position: relative;
 }
 
 header h1 {
@@ -24,6 +25,23 @@ header h1 {
 
 header p {
     color: #666;
+}
+
+/* GitHub Link Styling */
+.github-link {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    text-decoration: none;
+    color: #fff;
+    background-color: #24292e;
+    padding: 10px 15px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.github-link:hover {
+    background-color: #444;
 }
 
 main {
@@ -89,6 +107,12 @@ footer {
 
     header h1 {
         font-size: 2em;
+    }
+
+    .github-link {
+        position: static;
+        display: inline-block;
+        margin-top: 20px;
     }
 
     section {
