@@ -5,8 +5,15 @@ import datetime
 import subprocess
 from pathlib import Path
 
+# -------------------------------
+# Configuration Section
+# -------------------------------
+
 # Define the name of the CSS file
 CSS_FILENAME = "style.css"
+
+# Define the GitHub repository URL
+GITHUB_REPO_URL = "https://github.com/sec-bit/mle-pcs/"
 
 # HTML templates
 HTML_TEMPLATE_START = """<!DOCTYPE html>
@@ -21,6 +28,8 @@ HTML_TEMPLATE_START = """<!DOCTYPE html>
     <header>
         <h1>PDF Repository</h1>
         <p>Last updated: {build_time}</p>
+        <!-- GitHub Repository Link -->
+        <a href="{github_repo_url}" target="_blank" rel="noopener noreferrer" class="github-link">View on GitHub</a>
     </header>
     <main>
 """
@@ -125,7 +134,7 @@ def collect_pdfs(root_dir):
     sorted_pdf_dict = dict(sorted(pdf_dict.items(), key=lambda x: x[0].lower()))
     return sorted_pdf_dict
 
-def generate_html(pdf_dict, build_time, css_filename):
+def generate_html(pdf_dict, build_time, css_filename, github_repo_url):
     """
     Generate the complete HTML content.
 
@@ -133,11 +142,12 @@ def generate_html(pdf_dict, build_time, css_filename):
         pdf_dict (dict): Dictionary of directories and their PDF files.
         build_time (str): Timestamp of when the HTML was generated.
         css_filename (str): The CSS file name to link.
+        github_repo_url (str): URL of the GitHub repository.
 
     Returns:
         str: The complete HTML content.
     """
-    html_content = HTML_TEMPLATE_START.format(css_filename=css_filename, build_time=build_time)
+    html_content = HTML_TEMPLATE_START.format(css_filename=css_filename, build_time=build_time, github_repo_url=github_repo_url)
     
     for directory, pdfs in pdf_dict.items():
         html_content += f"    <section>\n"
@@ -176,6 +186,7 @@ body {
 header {
     text-align: center;
     margin-bottom: 40px;
+    position: relative;
 }
 
 header h1 {
@@ -185,6 +196,23 @@ header h1 {
 
 header p {
     color: #666;
+}
+
+/* GitHub Link Styling */
+.github-link {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    text-decoration: none;
+    color: #fff;
+    background-color: #24292e;
+    padding: 10px 15px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.github-link:hover {
+    background-color: #444;
 }
 
 main {
@@ -252,6 +280,12 @@ footer {
         font-size: 2em;
     }
 
+    .github-link {
+        position: static;
+        display: inline-block;
+        margin-top: 20px;
+    }
+
     section {
         padding: 15px;
     }
@@ -290,8 +324,8 @@ def main():
     css_path = os.path.join(root_dir, CSS_FILENAME)
     generate_css(css_path)
 
-    # Generate HTML content
-    html_content = generate_html(pdf_dict, build_time, CSS_FILENAME)
+    # Generate HTML content with GitHub repository link
+    html_content = generate_html(pdf_dict, build_time, CSS_FILENAME, GITHUB_REPO_URL)
 
     # Write to index.html
     index_path = os.path.join(root_dir, "index.html")
