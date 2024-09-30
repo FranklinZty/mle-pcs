@@ -2,6 +2,7 @@
 
 import os
 import datetime
+import subprocess
 from pathlib import Path
 
 # Define the name of the CSS file
@@ -33,6 +34,49 @@ HTML_TEMPLATE_END = """
 </html>
 """
 
+def is_git_repository():
+    """
+    Check if the current directory is inside a Git repository.
+    """
+    try:
+        subprocess.run(['git', 'status'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except FileNotFoundError:
+        print("Git is not installed or not found in PATH.")
+        return False
+
+def get_git_commit_time(file_path):
+    """
+    Retrieve the last commit time for a given file using Git.
+
+    Args:
+        file_path (str): The relative path to the file.
+
+    Returns:
+        str: The last commit datetime in "YYYY-MM-DD HH:MM:SS" format.
+             Returns "N/A" if the file is untracked or an error occurs.
+    """
+    try:
+        # Use git log to get the last commit date for the file
+        result = subprocess.run(
+            ['git', 'log', '-1', '--format=%ci', '--', file_path],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        commit_date = result.stdout.strip()
+        if commit_date:
+            # Format the date
+            dt = datetime.datetime.strptime(commit_date, "%Y-%m-%d %H:%M:%S %z")
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return "N/A"
+    except subprocess.CalledProcessError:
+        return "N/A"
+
 def collect_pdfs(root_dir):
     """
     Traverse the root_dir and collect all PDF files organized by their directories.
@@ -57,16 +101,20 @@ def collect_pdfs(root_dir):
         for file in filenames:
             if file.lower().endswith('.pdf'):
                 file_path = os.path.join(dirpath, file)
-                # Get last modified time
-                mtime = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                # Format datetime
-                mtime_str = mtime.strftime("%Y-%m-%d %H:%M:%S")
-                # Relative URL for linking
                 rel_url = os.path.relpath(file_path, root_dir).replace('\\', '/')
+                
+                if is_git_repository():
+                    rel_file_path = os.path.relpath(file_path, root_dir).replace('\\', '/')
+                    commit_time = get_git_commit_time(rel_file_path)
+                else:
+                    # Fallback to filesystem mtime if not in a git repo
+                    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+                    commit_time = mtime.strftime("%Y-%m-%d %H:%M:%S")
+                
                 pdf_files.append({
                     'name': file,
                     'url': rel_url,
-                    'mtime': mtime_str
+                    'mtime': commit_time
                 })
         if pdf_files:
             # Sort PDF files alphabetically
@@ -92,13 +140,13 @@ def generate_html(pdf_dict, build_time, css_filename):
     html_content = HTML_TEMPLATE_START.format(css_filename=css_filename, build_time=build_time)
     
     for directory, pdfs in pdf_dict.items():
-        html_content += f"        <section>\n"
-        html_content += f"            <h2>{directory}</h2>\n"
-        html_content += f"            <ul>\n"
+        html_content += f"    <section>\n"
+        html_content += f"        <h2>{directory}</h2>\n"
+        html_content += f"        <ul>\n"
         for pdf in pdfs:
-            html_content += f"                <li><a href=\"{pdf['url']}\" target=\"_blank\" rel=\"noopener noreferrer\">{pdf['name']}</a> <span class=\"mtime\">({pdf['mtime']})</span></li>\n"
-        html_content += f"            </ul>\n"
-        html_content += f"        </section>\n"
+            html_content += f"            <li><a href=\"{pdf['url']}\" target=\"_blank\" rel=\"noopener noreferrer\">{pdf['name']}</a> <span class=\"mtime\">({pdf['mtime']})</span></li>\n"
+        html_content += f"        </ul>\n"
+        html_content += f"    </section>\n"
 
     html_content += HTML_TEMPLATE_END.format(build_time=build_time)
     return html_content
@@ -222,10 +270,17 @@ footer {
         css_file.write(css_content.strip())
 
 def main():
+    # Check if inside a Git repository
+    git_repo = is_git_repository()
+    if git_repo:
+        print("Git repository detected. Using Git commit times for PDFs.")
+    else:
+        print("Not a Git repository or Git not installed. Falling back to filesystem modification times.")
+
     # Define root directory (current directory)
     root_dir = os.getcwd()
 
-    # Collect PDF files
+    # Collect PDF files with their last commit times
     pdf_dict = collect_pdfs(root_dir)
 
     # Get current timestamp
